@@ -1,3 +1,5 @@
+pub mod lava_lamp;
+
 use eframe::egui;
 use serde_json::Value;
 use std::{
@@ -18,11 +20,39 @@ where
 
 #[derive(Debug)]
 pub struct Shader {
-    pub name: String,
-    pub parser: Option<Box<dyn ShaderParser>>,
-
+    name: String,
     device_names: Vec<String>,
-    pub shader_str: String,
+    pub parser: Option<Box<dyn ShaderParser>>,
+    shader_str: String,
+}
+
+impl Shader {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn device_names(&self) -> &[String] {
+        &self.device_names
+    }
+
+    pub fn settings_ui(&mut self, ui: &mut egui::Ui) {
+        if let Some(ref mut parser) = self.parser {
+            parser.settings_ui(ui);
+        }
+    }
+
+    pub fn parse(&mut self) {
+        if let Some(ref mut parser) = self.parser {
+            parser.parse(&self.shader_str);
+        }
+    }
+
+    pub fn export(&mut self) {
+        if let Some(ref parser) = self.parser {
+            let str = parser.export();
+            self.shader_str = str;
+        }
+    }
 }
 
 #[derive(Default, Debug)]
@@ -31,18 +61,23 @@ pub struct Shaders {
 }
 
 impl Shaders {
-    pub fn iter(&self) -> impl Iterator<Item=&Shader> {
+    pub fn iter(&self) -> impl Iterator<Item = &Shader> {
         self.shaders.iter()
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item=&mut Shader> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Shader> {
         self.shaders.iter_mut()
+    }
+
+    pub fn get_shader(&mut self, index: usize) -> &mut Shader {
+        return &mut self.shaders[index]
     }
 
     pub fn parse_from_profile<T>(&mut self, profile_path: T)
     where
         T: Into<PathBuf>,
     {
+        self.shaders.clear();
         let file_content =
             fs::read_to_string(profile_path.into()).expect("Failed to read profile file");
         let json_data: Value = serde_json::from_str(&file_content).expect("Failed to parse JSON");
