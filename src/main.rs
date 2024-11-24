@@ -4,7 +4,11 @@
 mod shader;
 mod utils;
 
-use std::{env, path::PathBuf};
+use std::{
+    env,
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
 use eframe::egui;
 use shader::{lava_lamp, Shaders};
@@ -25,6 +29,8 @@ struct App {
     shaders: Shaders,
     selected_index: Option<u8>,
     profile_path: PathBuf,
+    last_change: Instant,
+    should_reload: bool,
 }
 
 impl Default for App {
@@ -35,6 +41,8 @@ impl Default for App {
             shaders: Shaders::default(),
             selected_index: None,
             profile_path,
+            last_change: Instant::now(),
+            should_reload: false,
         }
     }
 }
@@ -56,7 +64,7 @@ impl eframe::App for App {
                     egui::Color32::GRAY
                 };
 
-                let shader_name =shader.name().to_string().clone();
+                let shader_name = shader.name().to_string().clone();
                 let button_label = shader.device_names().first().unwrap_or(&shader_name);
                 let button = egui::Button::new(button_label).fill(color);
                 if ui.add(button).clicked() {
@@ -77,16 +85,18 @@ impl eframe::App for App {
                 if ui.button("parse").clicked() {
                     selected_shader.parse();
                 }
-                if ui.button("export").clicked() {
-                    selected_shader.export();
+
+                let changed = selected_shader.settings_ui(ui);
+                if changed {
+                    self.last_change = Instant::now();
+                    self.should_reload = true
                 }
-                let write = ui.button("write").clicked();
-
-
-                selected_shader.settings_ui(ui);
-
-                if write {
+                if self.last_change.elapsed() > Duration::from_millis(100) && self.should_reload {
+                    self.should_reload = false;
+                    println!("reloading");
+                    selected_shader.export();
                     self.shaders.save_to_profile(self.profile_path.clone());
+                    Shaders::reload_openrgb();
                 }
             }
         });

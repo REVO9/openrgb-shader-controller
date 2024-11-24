@@ -6,7 +6,7 @@ use crate::utils::float_to_string_decimal;
 
 use super::ShaderParser;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct LavaLampParser {
     blobs: Vec<Blob>,
 }
@@ -62,25 +62,37 @@ impl LavaLampParser {
 }
 
 impl ShaderParser for LavaLampParser {
-    fn settings_ui(&mut self, ui: &mut eframe::egui::Ui) {
-        for blob in self.blobs.iter_mut() {
+    fn settings_ui(&mut self, ui: &mut eframe::egui::Ui) -> bool {
+        let prev_state = self.clone();
+        let mut delete_index = None;
+        for (index, blob) in self.blobs.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 ui.color_edit_button_rgb(&mut blob.color);
 
                 ui.label("size:");
-                ui.add(egui::Slider::new(&mut blob.size, 0.0..=60.0));
+                ui.add(egui::Slider::new(&mut blob.size, 0.0..=100.0));
 
                 ui.label("speed");
                 ui.add(egui::Slider::new(&mut blob.speed, 0.0..=100.0));
 
                 ui.label("smoothness:");
-                ui.add(egui::Slider::new(&mut blob.smoothness, 0.0..=15.0));
+                ui.add(egui::Slider::new(&mut blob.smoothness, 0.0..=25.0));
+
+                if ui.button("delete").clicked() {
+                    delete_index = Some(index);
+                }
             });
+        }
+
+        if let Some(index) = delete_index {
+            self.blobs.remove(index);
         }
 
         if ui.button("add blob").clicked() {
             self.add_blob();
         }
+
+        return prev_state != *self;
     }
 
     fn parse(&mut self, shader_string: &str) {
@@ -125,13 +137,11 @@ impl ShaderParser for LavaLampParser {
                 }
                 format!("void initializeBlobs() {{\n{}}}", blob_initializations)
             });
-
-        println!("{}", final_shader);
         final_shader.to_string()
     }
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 struct Blob {
     color: [f32; 3],
     size: f32,

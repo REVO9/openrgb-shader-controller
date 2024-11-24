@@ -11,7 +11,7 @@ pub trait ShaderParser
 where
     Self: std::fmt::Debug,
 {
-    fn settings_ui(&mut self, ui: &mut egui::Ui);
+    fn settings_ui(&mut self, ui: &mut egui::Ui) -> bool;
 
     fn parse(&mut self, shader_string: &str);
 
@@ -23,8 +23,7 @@ pub struct Shader {
     name: String,
     device_names: Vec<String>,
     pub parser: Option<Box<dyn ShaderParser>>,
-    // should not be public
-    pub shader_str: String,
+    shader_str: String,
 }
 
 impl Shader {
@@ -36,15 +35,16 @@ impl Shader {
         &self.device_names
     }
 
-    pub fn settings_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn settings_ui(&mut self, ui: &mut egui::Ui) -> bool {
         if let Some(ref mut parser) = self.parser {
-            parser.settings_ui(ui);
+            let changed = parser.settings_ui(ui);
+            return changed;
         }
+        false
     }
 
     pub fn parse(&mut self) {
         if let Some(ref mut parser) = self.parser {
-            print!("parsing shader string: {}", self.shader_str);
             parser.parse(&self.shader_str.replace("\\n", "\n"));
         }
     }
@@ -73,6 +73,10 @@ impl Shaders {
 
     pub fn get_shader(&mut self, index: usize) -> &mut Shader {
         return &mut self.shaders[index];
+    }
+
+    pub fn reload_openrgb() {
+        let _ = reqwest::blocking::get("http://localhost:8080/load_shader_controller");
     }
 
     pub fn parse_from_profile<T>(&mut self, profile_path: T)
