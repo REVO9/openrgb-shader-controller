@@ -13,9 +13,9 @@ where
 {
     fn settings_ui(&mut self, ui: &mut egui::Ui);
 
-    fn parse(&mut self, string: &str);
+    fn parse(&mut self, shader_string: &str);
 
-    fn export(&self) -> String;
+    fn export(&self, shader_string: &str) -> String;
 }
 
 #[derive(Debug)]
@@ -23,7 +23,8 @@ pub struct Shader {
     name: String,
     device_names: Vec<String>,
     pub parser: Option<Box<dyn ShaderParser>>,
-    shader_str: String,
+    // should not be public
+    pub shader_str: String,
 }
 
 impl Shader {
@@ -43,13 +44,14 @@ impl Shader {
 
     pub fn parse(&mut self) {
         if let Some(ref mut parser) = self.parser {
-            parser.parse(&self.shader_str);
+            print!("parsing shader string: {}", self.shader_str);
+            parser.parse(&self.shader_str.replace("\\n", "\n"));
         }
     }
 
     pub fn export(&mut self) {
         if let Some(ref parser) = self.parser {
-            let str = parser.export();
+            let str = parser.export(&self.shader_str);
             self.shader_str = str;
         }
     }
@@ -70,7 +72,7 @@ impl Shaders {
     }
 
     pub fn get_shader(&mut self, index: usize) -> &mut Shader {
-        return &mut self.shaders[index]
+        return &mut self.shaders[index];
     }
 
     pub fn parse_from_profile<T>(&mut self, profile_path: T)

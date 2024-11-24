@@ -2,6 +2,7 @@
 #![allow(rustdoc::missing_crate_level_docs)] // it's an example
 
 mod shader;
+mod utils;
 
 use std::{env, path::PathBuf};
 
@@ -55,7 +56,9 @@ impl eframe::App for App {
                     egui::Color32::GRAY
                 };
 
-                let button = egui::Button::new(shader.device_names()[0].clone()).fill(color);
+                let shader_name =shader.name().to_string().clone();
+                let button_label = shader.device_names().first().unwrap_or(&shader_name);
+                let button = egui::Button::new(button_label).fill(color);
                 if ui.add(button).clicked() {
                     self.selected_index = Some(index as u8);
                 }
@@ -71,7 +74,20 @@ impl eframe::App for App {
                     selected_shader.parser = Some(Box::new(lava_lamp::LavaLampParser::default()));
                 }
 
+                if ui.button("parse").clicked() {
+                    selected_shader.parse();
+                }
+                if ui.button("export").clicked() {
+                    selected_shader.export();
+                }
+                let write = ui.button("write").clicked();
+
+
                 selected_shader.settings_ui(ui);
+
+                if write {
+                    self.shaders.save_to_profile(self.profile_path.clone());
+                }
             }
         });
     }
