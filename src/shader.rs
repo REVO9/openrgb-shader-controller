@@ -6,6 +6,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
+use undo::Record;
 
 pub trait ShaderParser
 where
@@ -16,6 +17,10 @@ where
     fn parse(&mut self, shader_string: &str);
 
     fn export(&self, shader_string: &str) -> String;
+
+    fn undo(&mut self);
+
+    fn redo(&mut self);
 }
 
 #[derive(Debug)]
@@ -24,6 +29,21 @@ pub struct Shader {
     device_names: Vec<String>,
     pub parser: Option<Box<dyn ShaderParser>>,
     shader_str: String,
+}
+
+#[derive(Clone)]
+pub(self) struct RecordWrap<E>(Record<E>);
+
+impl<E> std::fmt::Debug for RecordWrap<E> {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Result::Ok(())
+    }
+}
+
+impl<E> PartialEq for RecordWrap<E> {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
 }
 
 impl Shader {
@@ -53,6 +73,18 @@ impl Shader {
         if let Some(ref parser) = self.parser {
             let str = parser.export(&self.shader_str);
             self.shader_str = str;
+        }
+    }
+
+    pub fn undo(&mut self) {
+        if let Some(ref mut parser) = self.parser {
+            parser.undo();
+        }
+    }
+
+    pub fn redo(&mut self) {
+        if let Some(ref mut parser) = self.parser {
+            parser.redo();
         }
     }
 }
@@ -128,7 +160,6 @@ impl Shaders {
                 }
             }
 
-            // Create and store the Shader object
             self.shaders.push(Shader {
                 name: shader_name.to_string(),
                 parser: None,
